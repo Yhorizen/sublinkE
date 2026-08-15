@@ -23,7 +23,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
 fi
 
 # 获取最新的发行版标签
-latest_release=$(curl --silent "https://api.github.com/repos/eun1e/sublinkE/releases/latest" \
+latest_release=$(curl --silent "https://api.github.com/repos/Yhorizen/sublinkE/releases/latest" \
     | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 printf "最新版本: %s\n" "$latest_release"
 
@@ -37,7 +37,7 @@ esac
 
 # 下载文件
 cd ~ || exit 1
-curl -LO "https://github.com/eun1e/sublinkE/releases/download/$latest_release/$file_name"
+curl -LO "https://github.com/Yhorizen/sublinkE/releases/download/$latest_release/$file_name"
 
 # 设置可执行
 chmod +x "$file_name"
