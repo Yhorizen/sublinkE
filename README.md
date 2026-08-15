@@ -3,84 +3,125 @@
 </div>
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Vue-5.0.8-brightgreen.svg"/>
   <img src="https://img.shields.io/badge/Go-1.24.3-green.svg"/>
-  <img src="https://img.shields.io/badge/Element%20Plus-2.6.1-blue.svg"/>
+  <img src="https://img.shields.io/badge/Vue-3-brightgreen.svg"/>
+  <img src="https://img.shields.io/badge/Element%20Plus-2.x-blue.svg"/>
   <img src="https://img.shields.io/badge/license-MIT-green.svg"/>
   <div align="center"> 中文 | <a href="README.en-US.md">English</div>
-
-
 </div>
 
 # 项目简介
 
-`sublinkE` 是基于优秀的开源项目  [sublinkX](https://github.com/gooaclok819/sublinkX)  进行二次开发，仅在原项目基础上做了部分定制优化。建议用户优先参考和使用原项目，感谢原作者的付出与贡献。
+`sublinkE` 是基于优秀开源项目 [sublinkX](https://github.com/gooaclok819/sublinkX) 进行二次开发的自托管**代理节点订阅管理/分发系统，在保留原项目全部能力的基础上，加入了多用户体系、安全加固与多种实用功能。
 
 - 前端基于 [vue3-element-admin](https://github.com/youlaitech/vue3-element-admin)；
-- 后端采用 Go + Gin + Gorm；
-- 默认账号：admin 密码：123456，请安装后务必自行修改；
+- 后端采用 Go + Gin + Gorm（SQLite 单文件数据库）；
+- 默认账号：admin 密码：123456，**请安装后务必自行修改**；
+- 当前版本：v1.1.8.3
+- 本项目使用VibeCodeing
 
-# 修改内容
+# 功能特性
 
+## 节点与订阅
 
-- [x] 修复部分页面BUG
-- [x] 支持 Clash `dialer-proxy` 属性
-- [x] 允许添加并使用 API KEY 访问 API
-- [x] 导入、定时更新订阅链接中的节点
-- [x] 支持AnyTLS、Socks5协议
-- [x] 订阅节点排序
-- [x] 支持插件扩展（实验性）
-- [ ] ...
+- 支持多种代理协议：**ss、ssr、trojan、vmess、vless、hy、hy2、tuic、AnyTLS、Socks5**
+- 订阅输出格式：**v2ray（base64）、Clash（YAML）、Surge（conf）**，支持按 `User-Agent` 自动识别客户端
+- 订阅导入与**定时更新**（cron 表达式），自动解析节点入库
+- 节点排序（拖拽）、Clash `dialer-proxy` 属性、IPv6 地址包裹处理
+- 模板管理：自定义 Clash / Surge 订阅模板
 
-# 项目特色
+## 多用户体系
 
-- 高自由度与安全性，支持访问订阅记录及简易配置管理；
-- 支持多种客户端协议及格式，包括：
-    - v2ray（base64 通用格式）
-    - clash（支持 ss, ssr, trojan, vmess, vless, hy, hy2, tuic, AnyTLS, Socks5）
-    - surge（支持 ss, trojan, vmess, hy2, tuic）
-- 新增 token 授权及订阅导入功能，增强安全性和便捷性。
+- 用户注册（**滑块验证码 + 拖动轨迹检测**），支持邀请码注册开关与**邀请码使用上限**
+- 新注册用户自动分配默认订阅，每个用户持有独立的**订阅 Token**
+- 订阅链接统一为用户 Token 体系（已移除旧版 `md5(订阅名)` 链接），管理员可在「用户管理」分配订阅、限制可用地区、禁用/删除用户、重置订阅 Token
+- 用户中心：查看/复制自己的订阅链接（自动识别 / Clash / Surge / V2Ray）、修改密码（需验证旧密码）、查看拉取记录
+
+## 访问控制与审计
+
+- **地区限制**：可为用户配置允许地区（如 `中国,福建`），按 IP 归属地匹配，超范围拒绝拉取
+- **User-Agent 检测**（后台可开关）：开启后订阅拉取仅允许代理软件（关键字列表**可在后台配置**），浏览器/脚本直接访问返回 403
+- **拉取日志**：记录每次拉取的 IP、地区、客户端、**User-Agent** 与状态（成功 / 地区拦截 / UA 拦截），管理员与用户均可查看
+- 禁用用户即时断流：无法登录、无法通过订阅 Token 拉取、已签发 JWT 立即失效
+
+# 安全特性
+
+- **API Key 归属校验**：普通用户只能为自己生成/删除/查看 API Key，防止越权提权
+- **接口权限收敛**：用户列表、模板管理接口仅管理员可访问
+- **登录/注册限流**：登录 10 次/15 分钟/IP，注册 5 次/小时/IP，防暴力破解与批量注册
+- **Token 吊销机制**：改密、登出、被禁用后，已签发的 JWT 立即失效（token 版本号自增）
+- **JWT 有效期可配置**（`expire_days`），替代原先硬编码 14 天
+- **密码安全**：bcrypt 存储（禁止明文回退）、后端强制最小 6 位
+- **密钥保护**：管理接口返回的 `jwt_secret` / `api_encryption_key` 已掩码
+- **滑块验证码**：缺口位置仅存服务端内存，校验拖动位置（容差内）+ 拖动轨迹启发式检测，拦截脚本直提
+- **订阅链接安全**：用户 Token 为随机串（`sub_时间戳_24位随机`），不可推导；禁用/重置即时失效
 
 # 安装说明
 
-## Docker 运行
-```bash
-docker run --name sublinke -p 8000:8000 \
--v $PWD/db:/app/db \
--v $PWD/template:/app/template \
--v $PWD/logs:/app/logs \
--v $PWD/plugins:/app/plugins \
--d eun1e/sublinke 
-```
 
 ## 一键安装
+
 ```bash
-wget https://raw.githubusercontent.com/eun1e/sublinkE/refs/heads/main/install.sh   && sh install.sh
+wget https://raw.githubusercontent.com/<你的GitHub用户名>/sublinkE/main/install.sh && sh install.sh
 ```
 
-> ⚠ **注意**  
-> 在 **Alpine Linux** 上运行一键安装脚本时，由于 Alpine 使用 `musl` 而非 `glibc`，插件模块无法正常工作。 
-> 推荐优先使用 **Docker 部署** 以获得最佳兼容性，或可选择 **Debian / Ubuntu** 等发行版。
+> ⚠ **注意**
+> 在 **Alpine Linux** 上运行时，由于 Alpine 使用 `musl` 而非 `glibc`，插件模块无法正常工作。
+> 推荐优先使用 **Docker 部署**，或选择 **Debian / Ubuntu** 等发行版。
 
+## 直接运行
+
+- Windows：运行 `sublinke-windows-amd64.exe`（首次运行自动创建 `db/`、`template/`、`logs/`，默认端口 8000）
+- 修改端口/账号：
+  ```bash
+  sublinke setting --username admin --password 新密码 --port 8000
+  sublinke run --port 8000
+  ```
+
+## 使用提示
+
+- 首次登录后请在「系统管理 → 注册配置」设置：默认订阅 ID、邀请码注册开关、**UA 检测开关与关键字**
+- 在「用户管理」为用户分配订阅、配置允许地区；邀请码在「邀请码管理」创建（可设使用上限、可删除）
+- 修改密码需要验证旧密码，修改后所有旧登录会失效（需重新登录）
+
+# 开发与构建
+
+## 本地构建（前端 + 后端）
+
+```bash
+# 前端
+cd webs && pnpm install && pnpm build
+# 后端(生产模式, 内嵌前端产物)
+cd ..
+cp -r webs/dist static
+go build -tags=prod -ldflags "-s -w" -o sublinke .
+rm -rf static
+```
+
+## 自动发布（GitHub Actions）
+
+推送 `v*` 标签自动编译 **linux-amd64 / linux-arm64 / windows-amd64** 三个平台的二进制并上传到 GitHub Release：
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+> 前端依赖已通过 `pnpm-lock.yaml` 锁定（typescript 5.4.2 / vue-tsc 2.0.6），CI 与本地构建保持一致。
 
 # 插件说明
 
-`sublinkE` 提供了灵活的插件系统，允许开发者扩展系统功能而无需修改核心代码。
+`sublinkE` 提供了灵活的插件系统（实验性），允许开发者扩展系统功能而无需修改核心代码。
 
 ## 插件开发指南
-
-### 基本步骤
 
 1. **创建插件文件**：参照 `plugins_examples/email_plugin.go` 编写自定义插件
 2. **编译插件**：使用 `plugins_examples/build_plugin.sh email_plugin.go` 编译成 `.so` 文件
 3. **部署插件**：将编译好的 `.so` 文件放入 `plugins` 目录
 
-### 插件接口实现
-
-所有插件必须实现 `plugins.Plugin` 接口，包含以下核心方法：
+所有插件必须实现 `plugins.Plugin` 接口：
 
 ```go
-// 必须实现的方法
 Name() string                           // 插件名称
 Version() string                        // 插件版本
 Description() string                    // 插件描述
@@ -89,52 +130,32 @@ SetConfig(map[string]interface{})       // 设置配置
 Init() error                            // 初始化
 Close() error                           // 关闭清理
 
-// 事件处理方法 (API 事件监听)
-OnAPIEvent(ctx *gin.Context, event plugins.EventType, path string, 
-           statusCode int, requestBody interface{}, 
-           responseBody interface{}) error
-
-// 声明插件关注的 API 路径和事件类型
+// API 事件监听
+OnAPIEvent(ctx *gin.Context, event plugins.EventType, path string,
+           statusCode int, requestBody interface{}, responseBody interface{}) error
 InterestedAPIs() []string
 InterestedEvents() []plugins.EventType
 ```
 
-### 插件示例
+内置示例插件（版本更新可能失效，建议自己编译）：
 
-系统内置以下示例插件，供开发者参考学习(版本更新可能失效，建议自己编译)：
+| 插件名称 | 功能描述 | 源代码 |
+|---------|--------|-------|
+| **邮件通知插件** | 监控登录事件并发送邮件通知 | [email_plugin.go](https://github.com/eun1e/sublinkE/blob/main/plugins_examples/email_plugin.go) |
 
-| 插件名称 | 功能描述 | 源代码 | 编译版本 |
-|---------|--------|-------|---------|
-| **邮件通知插件** | 监控登录事件并发送邮件通知 | [email_plugin.go](https://github.com/eun1e/sublinkE/blob/main/plugins_examples/email_plugin.go) | [下载 .so 文件](https://raw.githubusercontent.com/eun1e/sublinkE/main/plugins_examples/email_plugin.so) |
+可通过 Web 界面的「插件管理」启用/禁用插件、配置参数、查看状态。
 
-### 插件配置与管理
+> ⚠ GitHub Actions 交叉编译产物（CGO 禁用）不包含插件加载支持；需要插件请在目标平台原生构建或使用 Docker 部署。
 
-可通过 Web 界面管理插件：
-- 启用/禁用插件
-- 配置插件参数
-- 查看插件状态
+# 技术栈
 
-## 开发自定义插件
-
-自定义插件开发流程：
-
-1. 创建插件 Go 文件，实现 `plugins.Plugin` 接口
-2. 导出 `GetPlugin()` 函数，返回插件实例
-3. 定义插件关心的 API 路径和事件类型
-4. 实现事件处理逻辑
-5. 使用构建脚本编译插件
-
-```bash
-# 编译插件
-wget https://raw.githubusercontent.com/eun1e/sublinkE/main/plugins_examples/build_plugin.sh
-chmod +x build_plugin.sh
-./build_plugin.sh your_plugin.go
-# 将生成的 .so 文件复制到插件目录
-cp your_plugin.so ../plugins/
-```
-
-更多高级功能和详细 API 文档，请参阅代码示例。
-
+| 层 | 技术 |
+|---|---|
+| 后端 | Go 1.24 + Gin + Gorm + SQLite（纯 Go 驱动） |
+| 前端 | Vue 3 + TypeScript + Element Plus + Vite + Pinia |
+| 认证 | JWT（HS256）+ bcrypt 密码哈希 |
+| 验证码 | 自研滑块验证码（服务端校验位置 + 轨迹检测） |
+| 部署 | Docker / 一键脚本 / 预编译二进制 |
 
 # 项目预览
 
@@ -144,3 +165,7 @@ cp your_plugin.so ../plugins/
 ![预览4](webs/src/assets/4.png)
 ![预览5](webs/src/assets/5.png)
 ![预览6](webs/src/assets/6.png)
+
+# 免责声明
+
+本项目仅用于技术学习与个人自用。使用者应遵守所在国家/地区的法律法规，请勿用于任何非法用途。
