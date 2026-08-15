@@ -30,6 +30,11 @@ export interface LoginData {
    * 验证码
    */
   captchaCode?: string;
+
+  /**
+   * 滑块拖动轨迹(JSON数组字符串)
+   */
+  trajectory?: string;
 }
 
 export interface RegisterResult {
@@ -68,7 +73,7 @@ export interface LoginResult {
 }
 
 /**
- * 验证码响应
+ * 验证码响应(滑块验证码)
  */
 export interface CaptchaResult {
   /**
@@ -76,9 +81,25 @@ export interface CaptchaResult {
    */
   captchaKey: string;
   /**
-   * 验证码图片Base64字符串
+   * 验证码背景图Base64字符串
    */
   captchaBase64: string;
+  /**
+   * 验证码类型
+   */
+  captchaType?: string;
+  /**
+   * 背景图宽度(像素)
+   */
+  bgWidth?: number;
+  /**
+   * 背景图高度(像素)
+   */
+  bgHeight?: number;
+  /**
+   * 拼块大小(像素)
+   */
+  pieceSize?: number;
 }
 
 export interface VersionResult {

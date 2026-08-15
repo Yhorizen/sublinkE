@@ -1,11 +1,13 @@
 <script setup lang='ts'>
+defineOptions({
+  name: "Subs",
+});
+
 import { ref,onMounted, computed, nextTick  } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {getSubs,AddSub,DelSub,UpdateSub,SortSub} from "@/api/subcription/subs"
 import {getTemp} from "@/api/subcription/temp"
 import {getNodes} from "@/api/subcription/node"
-import QrcodeVue from 'qrcode.vue'
-import md5 from 'md5'
 interface Sub {
   ID: number;
   Name: string;
@@ -53,7 +55,6 @@ const value1 = ref<string[]>([])
 const checkList = ref<string[]>([]) // 配置列表
 const iplogsdialog = ref(false)
 const IplogsList = ref<SubLogs[]>([])
-const qrcode = ref('')
 const templist = ref<Temp[]>([])
 async function getsubs() {
   const {data} = await getSubs();
@@ -305,29 +306,6 @@ const copyInfo = (row: any) => {
 const handleBase64 = (text: string) => {
   return  window.btoa(unescape(encodeURIComponent(text)));
 }
-const ClientDiaLog = ref(false)
-const ClientList = ['v2ray','clash','surge'] // 客户端列表
-const ClientUrls = ref<Record<string, string>>({})
-const ClientUrl = ref('')
-const handleClient = (name:string) => {
-  let serverAddress = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '');
-  ClientDiaLog.value = true
-  ClientUrl.value = `${serverAddress}/c/?token=${md5(name)}`
-  ClientList.forEach((item:string) => {
-    ClientUrls.value[item]=`${serverAddress}/c/?token=${md5(name)}`
-  })
-}
-
-const Qrdialog = ref(false)
-const QrTitle = ref('')
-const handleQrcode = (url:string,title:string)=>{
-  Qrdialog.value = true
-  qrcode.value = url
-  QrTitle.value = title
-}
-const OpenUrl = (url:string) => {
-  window.open(url)
-}
 const clientradio = ref('1')
 
 // 新增排序相关变量
@@ -518,29 +496,6 @@ const handleCancelSort = () => {
 
 <template>
   <div>
-    <el-dialog v-model="Qrdialog" width="300px" style="text-align: center" :title="QrTitle">
-      <qrcode-vue :value="qrcode"  :size="200" level="H" />
-      <el-input
-        v-model="qrcode"
-      >
-      </el-input>
-      <el-button @click="copyUrl(qrcode)">复制</el-button>
-      <el-button @click="OpenUrl(qrcode)">打开</el-button>
-    </el-dialog>
-
-    <el-dialog v-model="ClientDiaLog" title="客户端(点击二维码获取地址)" style="text-align: center" >
-      <el-row>
-        <el-col>
-          <el-tag type="success" size="large">自动识别</el-tag>
-          <el-button @click="handleQrcode(ClientUrl,'自动识别客户端')">二维码</el-button>
-        </el-col>
-        <el-col v-for="(item,index) in ClientUrls" :key="index" style="margin-bottom:10px;">
-          <el-tag type="success" size="large">{{index}}</el-tag>
-          <el-button @click="handleQrcode(`${item}&client=${index}`,index)">二维码</el-button>
-        </el-col>
-      </el-row>
-    </el-dialog>
-
     <el-dialog v-model="iplogsdialog" title="访问记录" width="80%" draggable>
       <template #footer>
         <div class="dialog-footer">
@@ -651,14 +606,6 @@ const handleCancelSort = () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="Link" label="链接" :show-overflow-tooltip="true" >
-          <template #default="{row}">
-            <div v-if="row.Nodes">
-              <el-link type="primary" size="small" @click="handleClient(row.Name)">客户端</el-link>
-            </div>
-          </template>
-        </el-table-column>
-
         <el-table-column prop="CreateDate" label="创建时间" sortable  />        <el-table-column  label="操作" width="220">
           <template #default="scope">
             <div v-if="scope.row.Nodes">

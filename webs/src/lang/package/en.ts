@@ -19,6 +19,7 @@ export default {
     password: "Password",
     login: "Login",
     captchaCode: "Verify Code",
+    sliderTip: "Drag the slider to align the piece with the gap",
     capsLock: "Caps Lock is On",
     message: {
       username: {
@@ -29,7 +30,7 @@ export default {
         min: "The password can not be less than 6 digits",
       },
       captchaCode: {
-        required: "Please enter Verify Code",
+        required: "Please drag the slider to complete verification",
       },
     },
   },

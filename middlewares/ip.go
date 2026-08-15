@@ -68,6 +68,7 @@ func GetIp(c *gin.Context) {
 				iplog.Username = uname
 			}
 			iplog.Client = c.Query("client")
+			iplog.UA = c.Request.UserAgent()
 			if err = iplog.Add(); err != nil {
 				log.Println(err)
 			}
@@ -77,6 +78,7 @@ func GetIp(c *gin.Context) {
 			iplog.Addr = ipinfo.Addr
 			iplog.Region = region
 			iplog.Client = c.Query("client")
+			iplog.UA = c.Request.UserAgent()
 			iplog.Status = "success"
 			if err = iplog.Update(); err != nil {
 				log.Println(err)

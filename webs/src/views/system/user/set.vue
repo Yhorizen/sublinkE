@@ -1,4 +1,8 @@
 <script setup lang='ts'>
+defineOptions({
+  name: "Userset",
+});
+
 import { ref,onMounted } from 'vue'
 import {useUserStore} from "@/store"
 import {getUserPullLogsApi, updateUserPassword} from "@/api/user"
@@ -10,6 +14,7 @@ const userinfo = ref<UserInfo>()
 const userStore = useUserStore()
 const username:Ref<string> = ref('')
 const password:Ref<string> = ref('')
+const oldPassword:Ref<string> = ref('')
 const pullLogs = ref<PullLog[]>([])
 
 onMounted( async() => {
@@ -24,6 +29,7 @@ onMounted( async() => {
     Status: item.Status || (item as any).status,
     Count: item.Count || (item as any).count,
     Date: item.Date || (item as any).date,
+    UA: item.UA || (item as any).ua,
   }))
 })
 
@@ -42,7 +48,7 @@ const copyUrl = async (url?: string) => {
 
 /** 重置密码 */
 function resetPassword() {
-  if (!username.value || !password.value) {
+  if (!username.value || !password.value || !oldPassword.value) {
     ElMessage.error(t('userset.message.xx1'))
     return
   }
@@ -62,7 +68,8 @@ function resetPassword() {
     .then(() => {
       updateUserPassword({
           username:username.value.trim(),
-          password:password.value.trim()
+          password:password.value.trim(),
+          oldPassword:oldPassword.value.trim()
         }
       ).then(() => {
         ElMessage.success(t('userset.message.xx4') + password.value);
@@ -85,6 +92,13 @@ function resetPassword() {
           </el-badge>
         </el-col>
 
+        <el-col :span="18">
+          <el-input
+            type="password"
+            v-model="oldPassword"
+            placeholder="旧密码"
+          />
+        </el-col>
         <el-col :span="18">
           <el-input
             v-model="username"
@@ -151,14 +165,15 @@ function resetPassword() {
         </div>
       </template>
       <el-table :data="pullLogs" border>
-        <el-table-column prop="IP" label="IP" />
+        <el-table-column prop="IP" label="IP" width="130" />
         <el-table-column prop="Region" label="地区" />
         <el-table-column prop="Addr" label="位置详情" />
         <el-table-column prop="Client" label="客户端" width="100" />
+        <el-table-column prop="UA" label="User-Agent" :show-overflow-tooltip="true" />
         <el-table-column label="状态" width="140">
           <template #default="scope">
-            <el-tag :type="scope.row.Status === 'blocked_region' ? 'danger' : 'success'">
-              {{ scope.row.Status === 'blocked_region' ? '地区拦截失败' : '成功' }}
+            <el-tag :type="scope.row.Status === 'blocked_region' || scope.row.Status === 'blocked_ua' ? 'danger' : 'success'">
+              {{ scope.row.Status === 'blocked_region' ? '地区拦截失败' : scope.row.Status === 'blocked_ua' ? 'UA拦截' : '成功' }}
             </el-tag>
           </template>
         </el-table-column>

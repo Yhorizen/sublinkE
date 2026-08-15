@@ -16,6 +16,7 @@ func Admin(r *gin.Engine) {
 		adminGroup.GET("/invites", api.AdminInviteList)
 		adminGroup.POST("/invites/add", api.AdminInviteAdd)
 		adminGroup.POST("/invites/update", api.AdminInviteUpdate)
+		adminGroup.DELETE("/invites/:id", api.AdminInviteDelete)
 		adminGroup.GET("/config", api.AdminConfigGet)
 		adminGroup.POST("/config", api.AdminConfigSet)
 	}

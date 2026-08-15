@@ -1,8 +1,6 @@
 package api
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,34 +19,37 @@ import (
 
 var SunName string
 
-// md5加密
-func Md5(src string) string {
-	m := md5.New()
-	m.Write([]byte(src))
-	res := hex.EncodeToString(m.Sum(nil))
-	return res
+// isProxyClientUA 判断User-Agent是否命中任一代理软件关键字
+// keywords 为逗号分隔的配置值(后台可编辑)，命中任一即视为代理软件
+func isProxyClientUA(ua string, keywords string) bool {
+	ua = strings.ToLower(ua)
+	for _, kw := range strings.Split(keywords, ",") {
+		kw = strings.TrimSpace(strings.ToLower(kw))
+		if kw != "" && strings.Contains(ua, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveSubscriptionName(token string) (string, *models.User, error) {
 	user := &models.User{SubscriptionToken: token}
-	if err := user.FindBySubscriptionToken(); err == nil && user.SubscriptionID != 0 {
-		var sub models.Subcription
-		sub.ID = user.SubscriptionID
-		if err = sub.Find(); err == nil {
-			return sub.Name, user, nil
-		}
+	if err := user.FindBySubscriptionToken(); err != nil {
+		return "", nil, fmt.Errorf("找不到对应订阅")
 	}
-	Sub := new(models.Subcription)
-	list, err := Sub.List()
-	if err != nil {
-		return "", nil, err
+	// 被禁用的用户禁止拉取订阅（禁用即断流）
+	if user.Disabled {
+		return "", nil, fmt.Errorf("用户已被禁用")
 	}
-	for _, sub := range list {
-		if Md5(sub.Name) == strings.ToLower(token) {
-			return sub.Name, nil, nil
-		}
+	if user.SubscriptionID == 0 {
+		return "", nil, fmt.Errorf("用户未分配订阅")
 	}
-	return "", nil, fmt.Errorf("找不到对应订阅")
+	var sub models.Subcription
+	sub.ID = user.SubscriptionID
+	if err := sub.Find(); err != nil {
+		return "", nil, fmt.Errorf("订阅不存在")
+	}
+	return sub.Name, user, nil
 }
 func GetClient(c *gin.Context) {
 	token := c.Query("token")
@@ -62,6 +63,31 @@ func GetClient(c *gin.Context) {
 	if err != nil {
 		log.Println(err)
 		c.Writer.WriteString(err.Error())
+		return
+	}
+	cfg := models.ReadConfig()
+	// User-Agent检测: 开启后仅命中配置关键字的代理软件可拉取订阅
+	if cfg.UACheckEnabled && !isProxyClientUA(c.Request.UserAgent(), cfg.UACheckKeywords) {
+		log.Printf("UA检测拦截 token=%s ua=%s", token, c.Request.UserAgent())
+		// 记录拦截日志(归属到用户)
+		var sub models.Subcription
+		sub.ID = user.SubscriptionID
+		_ = sub.Find()
+		blockedLog := &models.SubLogs{
+			IP:            c.ClientIP(),
+			Date:          time.Now().Format("2006-01-02 15:04:05"),
+			Region:        "未知",
+			Addr:          "未知",
+			Client:        ClientIndex,
+			Status:        "blocked_ua",
+			Count:         1,
+			SubcriptionID: user.SubscriptionID,
+			UserID:        user.ID,
+			Username:      user.Username,
+			UA:            c.Request.UserAgent(),
+		}
+		_ = blockedLog.Add()
+		c.Status(http.StatusForbidden)
 		return
 	}
 	c.Set("subname", subName)
@@ -113,6 +139,7 @@ func GetClient(c *gin.Context) {
 					SubcriptionID: sub.ID,
 					UserID:        user.ID,
 					Username:      user.Username,
+					UA:            c.Request.UserAgent(),
 				}
 				_ = failedLog.Add()
 				c.String(http.StatusForbidden, "当前地区不允许拉取订阅")

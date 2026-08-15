@@ -17,19 +17,26 @@ import (
 
 // Config 配置结构体
 type Config struct {
-	JwtSecret             string `yaml:"jwt_secret"`               // JWT密钥
-	APIEncryptionKey      string `yaml:"api_encryption_key"`       // API加密密钥
-	ExpireDays            int    `yaml:"expire_days"`              // 过期天数
-	Port                  int    `yaml:"port"`                     // 端口号
-	DefaultSubscriptionID int    `yaml:"default_subscription_id"`  // 默认分配订阅ID
-	InviteRequired        bool   `yaml:"invite_required"`          // 是否启用邀请码注册
+	JwtSecret             string `yaml:"jwt_secret"`              // JWT密钥
+	APIEncryptionKey      string `yaml:"api_encryption_key"`      // API加密密钥
+	ExpireDays            int    `yaml:"expire_days"`             // 过期天数
+	Port                  int    `yaml:"port"`                    // 端口号
+	DefaultSubscriptionID int    `yaml:"default_subscription_id"` // 默认分配订阅ID
+	InviteRequired        bool   `yaml:"invite_required"`         // 是否启用邀请码注册
+	UACheckEnabled        bool   `yaml:"ua_check_enabled"`        // 是否启用订阅User-Agent检测(仅代理软件可拉取)
+	UACheckKeywords       string `yaml:"ua_check_keywords"`       // UA关键字列表(逗号分隔，命中任一即视为代理软件)
 }
+
+// DefaultUACheckKeywords 默认UA关键字(写入配置，可在后台修改，检测时只使用配置值)
+const DefaultUACheckKeywords = "clash,mihomo,surge,v2ray,shadowrocket,quantumult,stash,sing-box,hiddify,nekobox,nekoray,loon,karing,outline,hysteria,trojan,sagernet,verge,subconverter,openclash,1.1.1.1,warp"
 
 var comment string = `# jwt_secret: JWT密钥
 # expire_days: token 过期天数
 # port: 启动端口
 # default_subscription_id: 新注册用户默认分配的订阅ID
 # invite_required: 是否要求邀请码注册
+# ua_check_enabled: 开启后订阅拉取仅允许代理软件(浏览器/脚本将被拦截)
+# ua_check_keywords: UA关键字列表(逗号分隔)，命中任一即视为代理软件放行
 `
 
 // 初始化配置
@@ -51,6 +58,8 @@ func ConfigInit() {
 			Port:                  8000, // 默认端口
 			DefaultSubscriptionID: 0,
 			InviteRequired:        false,
+			UACheckEnabled:        false,
+			UACheckKeywords:       DefaultUACheckKeywords,
 		}
 
 		// 生成yaml文件

@@ -42,20 +42,18 @@
           </div>
         </el-form-item>
 
-        <el-form-item>
+        <el-form-item class="captcha-form-item">
           <div class="flex-y-center w-full">
             <svg-icon icon-class="captcha" class="mx-2" />
-            <el-input
+            <SliderCaptcha
               v-model="form.captchaCode"
-              auto-complete="off"
-              size="large"
+              :bg-base64="captchaBase64"
+              :bg-width="captchaWidth"
+              :bg-height="captchaHeight"
+              :piece-size="captchaPieceSize"
               class="flex-1"
-              placeholder="验证码"
-            />
-            <el-image
-              @click="getCaptcha"
-              :src="captchaBase64"
-              class="rounded-tr-md rounded-br-md cursor-pointer h-[48px]"
+              @update:trajectory="(v: string) => (form.trajectory = v)"
+              @refresh="getCaptcha"
             />
           </div>
         </el-form-item>
@@ -84,13 +82,17 @@ const isDark = ref(settingsStore.theme === ThemeEnum.DARK);
 const loading = ref(false);
 const version = ref('');
 const captchaBase64 = ref('');
+const captchaWidth = ref(320);
+const captchaHeight = ref(160);
+const captchaPieceSize = ref(40);
 const form = ref<LoginData>({
   username: '',
   password: '',
   nickname: '',
   inviteCode: '',
   captchaKey: '',
-  captchaCode: ''
+  captchaCode: '',
+  trajectory: ''
 });
 
 GetVersion().then((res) => {
@@ -101,6 +103,11 @@ const getCaptcha = () => {
   getCaptchaApi().then(({ data }) => {
     form.value.captchaKey = data.captchaKey;
     captchaBase64.value = data.captchaBase64;
+    captchaWidth.value = data.bgWidth || 320;
+    captchaHeight.value = data.bgHeight || 160;
+    captchaPieceSize.value = data.pieceSize || 40;
+    form.value.captchaCode = '';
+    form.value.trajectory = '';
   });
 };
 
@@ -159,6 +166,13 @@ html.dark .login-container {
   border: 1px solid var(--el-border-color);
   border-radius: 5px;
 }
+
+/* 滑块验证码自带背景图，去除外层边框避免双重边框 */
+.captcha-form-item {
+  background: transparent !important;
+  border: none !important;
+}
+
 .action-group {
   display: flex;
   flex-direction: column;

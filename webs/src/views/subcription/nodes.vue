@@ -1,4 +1,8 @@
 <script setup lang='ts'>
+defineOptions({
+  name: "Nodes",
+});
+
 import { ref,onMounted,nextTick,computed,watch  } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import {getNodes,AddNodes,DelNode,UpdateNode} from "@/api/subcription/node"

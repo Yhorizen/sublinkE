@@ -140,6 +140,10 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({
+  name: "ApikeyIndex",
+});
+
 import { ref, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import { useI18n } from 'vue-i18n';

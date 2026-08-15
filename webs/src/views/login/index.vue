@@ -63,23 +63,19 @@
           </el-form-item>
         </el-tooltip>
 
-        <!-- 验证码 -->
-        <el-form-item prop="captchaCode">
+        <!-- 滑块验证码 -->
+        <el-form-item prop="captchaCode" class="captcha-form-item">
           <div class="flex-y-center w-full">
             <svg-icon icon-class="captcha" class="mx-2" />
-            <el-input
+            <SliderCaptcha
               v-model="loginData.captchaCode"
-              auto-complete="off"
-              size="large"
+              :bg-base64="captchaBase64"
+              :bg-width="captchaWidth"
+              :bg-height="captchaHeight"
+              :piece-size="captchaPieceSize"
               class="flex-1"
-              :placeholder="$t('login.captchaCode')"
-              @keyup.enter="handleLogin"
-            />
-
-            <el-image
-              @click="getCaptcha"
-              :src="captchaBase64"
-              class="rounded-tr-md rounded-br-md cursor-pointer h-[48px]"
+              @update:trajectory="(v: string) => (loginData.trajectory = v)"
+              @refresh="getCaptcha"
             />
           </div>
         </el-form-item>
@@ -98,7 +94,7 @@
           plain
           type="success"
           size="large"
-          class="w-full mt-3"
+          class="w-full mt-3 login-btn"
           @click.prevent="router.push('/register')"
         >前往注册</el-button>
 
@@ -144,13 +140,18 @@ const isDark = ref(settingsStore.theme === ThemeEnum.DARK);
 const icpVisible = ref(true);
 const loading = ref(false); // 按钮loading
 const isCapslock = ref(false); // 是否大写锁定
-const captchaBase64 = ref(); // 验证码图片Base64字符串
+const captchaBase64 = ref(); // 滑块验证码背景图Base64
+const captchaWidth = ref(320); // 背景图宽度
+const captchaHeight = ref(160); // 背景图高度
+const captchaPieceSize = ref(40); // 拼块大小
 const loginFormRef = ref(ElForm); // 登录表单ref
 const { height } = useWindowSize();
 
 const loginData = ref<LoginData>({
   username: "",
   password: "",
+  captchaCode: "",
+  trajectory: "",
 });
 
 const loginRules = computed(() => {
@@ -185,12 +186,17 @@ const loginRules = computed(() => {
 });
 
 /**
- * 获取验证码
+ * 获取滑块验证码
  */
 function getCaptcha() {
   getCaptchaApi().then(({ data }) => {
     loginData.value.captchaKey = data.captchaKey;
     captchaBase64.value = data.captchaBase64;
+    captchaWidth.value = data.bgWidth || 320;
+    captchaHeight.value = data.bgHeight || 160;
+    captchaPieceSize.value = data.pieceSize || 40;
+    loginData.value.captchaCode = ""; // 刷新验证码后清空拖动位置
+    loginData.value.trajectory = ""; // 同时清空拖动轨迹
   });
 }
 
@@ -285,6 +291,17 @@ html.dark .login-container {
   background: var(--el-input-bg-color);
   border: 1px solid var(--el-border-color);
   border-radius: 5px;
+}
+
+/* 滑块验证码自带背景图，去除外层边框避免双重边框 */
+.captcha-form-item {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 修复 Element Plus 相邻按钮默认 margin-left:12px 导致的错位 */
+.login-btn {
+  margin-left: 0 !important;
 }
 
 :deep(.el-input) {

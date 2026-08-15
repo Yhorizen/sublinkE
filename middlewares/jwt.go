@@ -15,7 +15,8 @@ var Secret = []byte(models.ReadConfig().JwtSecret) // 秘钥
 
 // JwtClaims jwt声明
 type JwtClaims struct {
-	Username string `json:"username"`
+	Username     string `json:"username"`
+	TokenVersion int    `json:"token_version"` // token版本号(改密/登出/禁用后自增，旧token失效)
 	jwt.RegisteredClaims
 }
 
@@ -68,8 +69,34 @@ func AuthToken(c *gin.Context) {
 	mc, err := ParseToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"code": 401,
+			"code": "A0230",
 			"msg":  err.Error(),
+		})
+		c.Abort()
+		return
+	}
+	// 校验用户状态与token版本(禁用/改密/登出后旧token失效)
+	user := &models.User{Username: mc.Username}
+	if err := user.Find(); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code": "A0230",
+			"msg":  "用户不存在",
+		})
+		c.Abort()
+		return
+	}
+	if user.Disabled {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code": "A0230",
+			"msg":  "用户已被禁用",
+		})
+		c.Abort()
+		return
+	}
+	if user.TokenVersion != mc.TokenVersion {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code": "A0230",
+			"msg":  "登录已失效，请重新登录",
 		})
 		c.Abort()
 		return
@@ -119,7 +146,14 @@ func validApiKey(apiKey string) (string, bool, error) {
 	// bcrypt验证
 	for _, key := range keys {
 		if key.VerifyKey(apiKey) {
-
+			// 检查用户是否被禁用（禁用即断流）
+			user := &models.User{Username: key.Username}
+			if err := user.Find(); err != nil {
+				return "", false, fmt.Errorf("用户不存在")
+			}
+			if user.Disabled {
+				return "", false, fmt.Errorf("用户已被禁用")
+			}
 			return key.Username, true, nil
 		}
 	}

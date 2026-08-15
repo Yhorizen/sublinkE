@@ -25,6 +25,11 @@ func InitSqlite() {
 		log.Println("连接数据库失败")
 	}
 	DB = db
+	// SQLite 单写者模型: 限制连接池为单连接，
+	// 避免多连接下读事务残留导致写入被回滚/不可见(如 token_version 自增不生效、"database is locked")
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	// 检查是否已经初始化
 	if isInitialized {
 		log.Println("数据库已经初始化，无需重复初始化")
@@ -34,6 +39,8 @@ func InitSqlite() {
 	if err != nil {
 		log.Println("数据表迁移失败")
 	}
+	// 回填存量数据: SQLite新增列对旧行为NULL，将token_version NULL补为0
+	db.Exec("UPDATE users SET token_version = 0 WHERE token_version IS NULL")
 	// 初始化用户数据
 	err = db.First(&User{}).Error
 	if err == gorm.ErrRecordNotFound {

@@ -67,13 +67,14 @@ export function updateUser(id: number, data: UserForm) {
 }
 
 /**
- * 修改密码
+ * 修改密码(需验证旧密码)
  * @param data
  */
-export function updateUserPassword(data: { username: string; password: string }) {
+export function updateUserPassword(data: { username: string; password: string; oldPassword: string }) {
   const params = new URLSearchParams()
   params.append('username', data.username)
   params.append('password', data.password)
+  params.append('oldPassword', data.oldPassword)
 
   return request({
     url: "/api/v1/users/update",

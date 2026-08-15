@@ -12,6 +12,7 @@ export interface AdminPullLogItem {
   SubcriptionID?: number;
   UserID?: number;
   Username?: string;
+  UA?: string;
 }
 
 export interface AdminUserItem {
@@ -34,6 +35,7 @@ export interface InviteItem {
   description: string;
   enabled: boolean;
   usedCount: number;
+  maxUses: number;
   createdAt: string;
 }
 
@@ -44,6 +46,8 @@ export interface AdminConfig {
   port?: number;
   default_subscription_id: number;
   invite_required: boolean;
+  ua_check_enabled: boolean;
+  ua_check_keywords: string;
 }
 
 export function getAdminUsers() {
@@ -88,10 +92,11 @@ export function getInvites() {
   return request({ url: "/api/v1/admin/invites", method: "get" });
 }
 
-export function addInvite(data: { code?: string; description?: string }) {
+export function addInvite(data: { code?: string; description?: string; maxUses?: number }) {
   const form = new FormData();
   if (data.code) form.append("code", data.code);
   if (data.description) form.append("description", data.description);
+  if (data.maxUses !== undefined) form.append("maxUses", String(data.maxUses));
   return request({
     url: "/api/v1/admin/invites/add",
     method: "post",
@@ -100,11 +105,12 @@ export function addInvite(data: { code?: string; description?: string }) {
   });
 }
 
-export function updateInvite(data: { id: number; description?: string; enabled?: boolean }) {
+export function updateInvite(data: { id: number; description?: string; enabled?: boolean; maxUses?: number }) {
   const form = new FormData();
   form.append("id", String(data.id));
   if (data.description !== undefined) form.append("description", data.description);
   if (data.enabled !== undefined) form.append("enabled", String(data.enabled));
+  if (data.maxUses !== undefined) form.append("maxUses", String(data.maxUses));
   return request({
     url: "/api/v1/admin/invites/update",
     method: "post",
@@ -113,14 +119,23 @@ export function updateInvite(data: { id: number; description?: string; enabled?:
   });
 }
 
+export function deleteInvite(id: number) {
+  return request({
+    url: `/api/v1/admin/invites/${id}`,
+    method: "delete",
+  });
+}
+
 export function getAdminConfig() {
   return request({ url: "/api/v1/admin/config", method: "get" });
 }
 
-export function setAdminConfig(data: { defaultSubscriptionId?: number; inviteRequired?: boolean }) {
+export function setAdminConfig(data: { defaultSubscriptionId?: number; inviteRequired?: boolean; uaCheckEnabled?: boolean; uaCheckKeywords?: string }) {
   const form = new FormData();
   if (data.defaultSubscriptionId !== undefined) form.append("defaultSubscriptionId", String(data.defaultSubscriptionId));
   if (data.inviteRequired !== undefined) form.append("inviteRequired", String(data.inviteRequired));
+  if (data.uaCheckEnabled !== undefined) form.append("uaCheckEnabled", String(data.uaCheckEnabled));
+  if (data.uaCheckKeywords !== undefined) form.append("uaCheckKeywords", data.uaCheckKeywords);
   return request({
     url: "/api/v1/admin/config",
     method: "post",

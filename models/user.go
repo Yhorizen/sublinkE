@@ -10,17 +10,18 @@ import (
 )
 
 type User struct {
-	ID                    int
-	Username              string `gorm:"uniqueIndex"`
-	Password              string
-	Role                  string
-	Nickname              string
-	SubscriptionID        int
-	SubscriptionToken     string `gorm:"uniqueIndex"`
-	AllowedRegions        string
-	InviteCodeID          int
-	Disabled              bool
-	CreatedAt             time.Time
+	ID              int
+	Username        string `gorm:"uniqueIndex"`
+	Password        string
+	Role            string
+	Nickname        string
+	SubscriptionID  int
+	SubscriptionToken string `gorm:"uniqueIndex"`
+	AllowedRegions  string
+	InviteCodeID    int
+	Disabled        bool
+	TokenVersion    int // token版本号: 改密/登出/禁用后自增使旧JWT失效
+	CreatedAt       time.Time
 }
 
 func (user *User) Create() error { // 创建用户
@@ -83,15 +84,9 @@ func (user *User) Verify() error { // 验证用户
 	if dbUser.Disabled {
 		return errors.New("用户已被禁用")
 	}
+	// 仅支持bcrypt哈希密码比对(禁止明文密码回退)
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(user.Password)); err != nil {
-		if dbUser.Password != user.Password {
-			return err
-		}
-		hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-		if hashErr == nil {
-			DB.Model(&dbUser).Update("password", string(hashedPassword))
-			dbUser.Password = string(hashedPassword)
-		}
+		return err
 	}
 	*user = dbUser
 	return nil
@@ -117,4 +112,23 @@ func (user *User) FindByID() error { // 通过ID查找用户
 
 func (user *User) Del() error { // 删除用户
 	return DB.Delete(user).Error
+}
+
+// IncrementTokenVersion 自增用户token版本号(显式事务确保提交)
+// 用于改密/登出/禁用后吊销已签发的JWT
+func IncrementTokenVersion(username string) error {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return err
+	}
+	tx, err := sqlDB.Begin()
+	if err != nil {
+		return err
+	}
+	// COALESCE 兼容存量行为NULL的旧数据(NULL+1=NULL导致自增失效)
+	if _, err := tx.Exec("UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE username = ?", username); err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }

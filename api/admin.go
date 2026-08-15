@@ -132,6 +132,12 @@ func AdminUpdateUser(c *gin.Context) {
 		c.JSON(500, gin.H{"msg": "更新失败"})
 		return
 	}
+	// 禁用用户时自增token版本号，使其已签发的JWT立即失效
+	if v, ok := payload["disabled"]; ok && v == true {
+		if verr := models.IncrementTokenVersion(target.Username); verr != nil {
+			log.Println("吊销用户token失败:", verr)
+		}
+	}
 	c.JSON(200, gin.H{"code": "00000", "msg": "更新成功"})
 }
 
@@ -153,6 +159,10 @@ func AdminInviteAdd(c *gin.Context) {
 	}
 	code := c.PostForm("code")
 	description := c.PostForm("description")
+	maxUses := 0
+	if v := c.PostForm("maxUses"); v != "" {
+		fmt.Sscanf(v, "%d", &maxUses)
+	}
 	if code == "" {
 		code = strings.ToUpper(utils.RandString(10))
 	}
@@ -160,6 +170,7 @@ func AdminInviteAdd(c *gin.Context) {
 		Code:        code,
 		Description: description,
 		Enabled:     true,
+		MaxUses:     maxUses,
 	}
 	if err := invite.Add(); err != nil {
 		c.JSON(400, gin.H{"msg": "创建邀请码失败，可能已存在"})
@@ -190,6 +201,11 @@ func AdminInviteUpdate(c *gin.Context) {
 	if enabled := c.PostForm("enabled"); enabled != "" {
 		payload["enabled"] = enabled == "true"
 	}
+	if maxUses := c.PostForm("maxUses"); maxUses != "" {
+		var m int
+		fmt.Sscanf(maxUses, "%d", &m)
+		payload["max_uses"] = m
+	}
 	if len(payload) == 0 {
 		c.JSON(400, gin.H{"msg": "没有可更新字段"})
 		return
@@ -201,20 +217,56 @@ func AdminInviteUpdate(c *gin.Context) {
 	c.JSON(200, gin.H{"code": "00000", "msg": "更新成功"})
 }
 
+func AdminInviteDelete(c *gin.Context) {
+	if _, ok := ensureAdmin(c); !ok {
+		return
+	}
+	id := c.Param("id")
+	var invite models.InviteCode
+	fmt.Sscanf(id, "%d", &invite.ID)
+	if invite.ID == 0 {
+		c.JSON(400, gin.H{"msg": "邀请码ID不能为空"})
+		return
+	}
+	if err := invite.FindByID(); err != nil {
+		c.JSON(400, gin.H{"msg": "邀请码不存在"})
+		return
+	}
+	if err := invite.Delete(); err != nil {
+		c.JSON(500, gin.H{"msg": "删除失败"})
+		return
+	}
+	c.JSON(200, gin.H{"code": "00000", "msg": "删除成功"})
+}
+
+// maskSecret 掩码敏感密钥，避免完整泄露到前端
+func maskSecret(s string) string {
+	if len(s) <= 4 {
+		return "******"
+	}
+	return s[:4] + "****"
+}
+
 func AdminConfigGet(c *gin.Context) {
 	if _, ok := ensureAdmin(c); !ok {
 		return
 	}
 	config := models.ReadConfig()
+	uaKeywords := config.UACheckKeywords
+	if strings.TrimSpace(uaKeywords) == "" {
+		uaKeywords = models.DefaultUACheckKeywords
+	}
 	c.JSON(200, gin.H{
 		"code": "00000",
 		"data": gin.H{
-			"jwt_secret":              config.JwtSecret,
-			"api_encryption_key":      config.APIEncryptionKey,
+			"jwt_secret":              maskSecret(config.JwtSecret),
+			"api_encryption_key":      maskSecret(config.APIEncryptionKey),
 			"expire_days":             config.ExpireDays,
 			"port":                    config.Port,
 			"default_subscription_id": config.DefaultSubscriptionID,
 			"invite_required":         config.InviteRequired,
+			"ua_check_enabled":        config.UACheckEnabled,
+			"ua_check_keywords":       uaKeywords,
 		},
 		"msg": "获取成功",
 	})
@@ -230,6 +282,12 @@ func AdminConfigSet(c *gin.Context) {
 	}
 	if inviteRequired := c.PostForm("inviteRequired"); inviteRequired != "" {
 		config.InviteRequired = inviteRequired == "true"
+	}
+	if uaCheck := c.PostForm("uaCheckEnabled"); uaCheck != "" {
+		config.UACheckEnabled = uaCheck == "true"
+	}
+	if uaKeywords := c.PostForm("uaCheckKeywords"); uaKeywords != "" {
+		config.UACheckKeywords = uaKeywords
 	}
 	models.SetConfig(config)
 	c.JSON(200, gin.H{"code": "00000", "msg": "保存成功"})

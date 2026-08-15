@@ -30,6 +30,7 @@ export interface PullLog {
   SubcriptionID?: number;
   UserID?: number;
   Username?: string;
+  UA?: string;
 }
 
 /**

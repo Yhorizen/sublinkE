@@ -10,3 +10,13 @@ sublink.exe
 static
 sublinke.exe
 
+# 敏感配置
+.env
+# 编译产物
+*.exe
+sublinke-windows-amd64.exe
+# 本地IP库
+ip2region_*.xdb
+# 运行时插件
+plugins/
+

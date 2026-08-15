@@ -19,6 +19,7 @@ export default {
     password: "密码",
     login: "登 录",
     captchaCode: "验证码",
+    sliderTip: "按住滑块，将拼块拖动对齐缺口",
     capsLock: "大写锁定已打开",
     message: {
       username: {
@@ -29,7 +30,7 @@ export default {
         min: "密码不能少于6位",
       },
       captchaCode: {
-        required: "请输入验证码",
+        required: "请拖动滑块完成验证",
       },
     },
   },

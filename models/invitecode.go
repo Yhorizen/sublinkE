@@ -8,6 +8,7 @@ type InviteCode struct {
 	Description string    `json:"description"`
 	Enabled     bool      `json:"enabled"`
 	UsedCount   int       `json:"usedCount"`
+	MaxUses     int       `json:"maxUses"` // 最大使用次数(0=不限)
 	CreatedAt   time.Time `json:"createdAt"`
 }
 

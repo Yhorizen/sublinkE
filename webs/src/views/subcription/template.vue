@@ -1,4 +1,8 @@
 <script setup lang='ts'>
+defineOptions({
+  name: "Template",
+});
+
 import { ref,onMounted,nextTick  } from 'vue'
 import {getTemp,AddTemp,UpdateTemp,DelTemp} from "@/api/subcription/temp"
 interface Temp {

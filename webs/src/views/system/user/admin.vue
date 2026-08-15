@@ -43,14 +43,15 @@
 
   <el-dialog v-model="pullLogDialogVisible" title="用户拉取记录" width="900px">
     <el-table :data="currentPullLogs" border>
-      <el-table-column prop="IP" label="IP" />
+      <el-table-column prop="IP" label="IP" width="130" />
       <el-table-column prop="Region" label="地区" />
       <el-table-column prop="Addr" label="位置详情" />
       <el-table-column prop="Client" label="客户端" width="100" />
+      <el-table-column prop="UA" label="User-Agent" :show-overflow-tooltip="true" />
       <el-table-column label="状态" width="140">
         <template #default="scope">
-          <el-tag :type="scope.row.Status === 'blocked_region' ? 'danger' : 'success'">
-            {{ scope.row.Status === 'blocked_region' ? '地区拦截失败' : '成功' }}
+          <el-tag :type="scope.row.Status === 'blocked_region' || scope.row.Status === 'blocked_ua' ? 'danger' : 'success'">
+            {{ scope.row.Status === 'blocked_region' ? '地区拦截失败' : scope.row.Status === 'blocked_ua' ? 'UA拦截' : '成功' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -88,6 +89,10 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({
+  name: "UserAdmin",
+});
+
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteAdminUser, getAdminUsers, resetSubscriptionToken, updateAdminUser, type AdminUserItem } from '@/api/admin'

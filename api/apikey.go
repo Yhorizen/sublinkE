@@ -15,8 +15,18 @@ func GenerateAPIKey(c *gin.Context) {
 		c.JSON(500, gin.H{"msg": "参数错误"})
 		return
 	}
+	// 归属校验: 仅管理员可为他人生成，普通用户只能为自己生成
+	current, err := currentUser(c)
+	if err != nil {
+		c.JSON(401, gin.H{"msg": "未登录"})
+		return
+	}
+	if current.Role != "admin" && userAccessKey.UserName != current.Username {
+		c.JSON(403, gin.H{"msg": "无权为其他用户生成API Key"})
+		return
+	}
 	user := &models.User{Username: userAccessKey.UserName}
-	err := user.Find()
+	err = user.Find()
 	if err != nil {
 		c.JSON(400, gin.H{"msg": "用户不存在"})
 		return
@@ -51,31 +61,43 @@ func GenerateAPIKey(c *gin.Context) {
 }
 
 func DeleteAPIKey(c *gin.Context) {
-
 	apiKeyIDParam := c.Param("apiKeyId")
 	if apiKeyIDParam == "" {
 		c.JSON(400, gin.H{"msg": "缺少API Key ID"})
 		return
 	}
-
-	var accessKey models.AccessKey
 	apiKeyID, err := strconv.Atoi(apiKeyIDParam)
 	if err != nil {
 		c.JSON(500, gin.H{"msg": "删除API Key失败"})
 		return
 	}
+	// 归属校验: 仅管理员可删除他人Key，普通用户只能删除自己的
+	current, err := currentUser(c)
+	if err != nil {
+		c.JSON(401, gin.H{"msg": "未登录"})
+		return
+	}
+	var fullKey models.AccessKey
+	if err := models.DB.First(&fullKey, apiKeyID).Error; err != nil {
+		c.JSON(400, gin.H{"msg": "API Key不存在"})
+		return
+	}
+	if current.Role != "admin" && fullKey.Username != current.Username {
+		c.JSON(403, gin.H{"msg": "无权删除他人API Key"})
+		return
+	}
+
+	var accessKey models.AccessKey
 	accessKey.ID = apiKeyID
 	err = accessKey.Delete()
 	if err != nil {
 		c.JSON(500, gin.H{"msg": "删除API Key失败"})
 		return
 	}
-
 	c.JSON(200, gin.H{
 		"code": "00000",
 		"msg":  "删除API Key成功",
 	})
-
 }
 
 func GetAPIKey(c *gin.Context) {
@@ -84,10 +106,19 @@ func GetAPIKey(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "缺少User ID"})
 		return
 	}
-
 	userID, err := strconv.Atoi(userIDParam)
 	if err != nil {
 		c.JSON(500, gin.H{"msg": "删除API Key失败"})
+		return
+	}
+	// 归属校验: 仅管理员可查看他人Key，普通用户只能查看自己的
+	current, err := currentUser(c)
+	if err != nil {
+		c.JSON(401, gin.H{"msg": "未登录"})
+		return
+	}
+	if current.Role != "admin" && current.ID != userID {
+		c.JSON(403, gin.H{"msg": "无权查看他人API Key"})
 		return
 	}
 	apiKeys, err := models.FindValidAccessKeys(userID)

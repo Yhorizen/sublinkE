@@ -53,6 +53,11 @@ func buildSubscriptionURLs(c *gin.Context, user *models.User) (string, string, s
 	return subscriptionURL, clashURL, surgeURL, v2rayURL, subscriptionName
 }
 
+// 密码强度校验(至少6位)
+func validatePassword(pw string) bool {
+	return len(pw) >= 6
+}
+
 // 注册用户
 func UserRegister(c *gin.Context) {
 	username := c.PostForm("username")
@@ -64,6 +69,13 @@ func UserRegister(c *gin.Context) {
 	if username == "" || password == "" {
 		c.JSON(400, gin.H{
 			"msg": "用户名或密码不能为空",
+		})
+		return
+	}
+	// 后端密码强度校验(防止绕过前端限制)
+	if !validatePassword(password) {
+		c.JSON(400, gin.H{
+			"msg": "密码长度不能少于6位",
 		})
 		return
 	}
@@ -90,8 +102,16 @@ func UserRegister(c *gin.Context) {
 			})
 			return
 		}
+		// 校验使用上限(0=不限)
+		if invite.MaxUses > 0 && invite.UsedCount >= invite.MaxUses {
+			c.JSON(400, gin.H{
+				"msg": "邀请码已用完",
+			})
+			return
+		}
 	}
-	if !utils.VerifyCaptcha(captchaKey, captchaCode) {
+	// 验证验证码(位置 + 拖动轨迹)
+	if !utils.VerifyCaptcha(captchaKey, captchaCode) || !utils.VerifyTrajectory(c.PostForm("trajectory")) {
 		c.JSON(400, gin.H{
 			"msg": "验证码错误",
 		})
@@ -198,8 +218,11 @@ func UserMe(c *gin.Context) {
 	})
 }
 
-// 获取所有用户
+// 获取所有用户(仅管理员)
 func UserPages(c *gin.Context) {
+	if _, ok := ensureAdmin(c); !ok {
+		return
+	}
 	username, _ := c.Get("username")
 	user := &models.User{Username: username.(string)}
 	users, err := user.All()
@@ -231,6 +254,7 @@ func UserPages(c *gin.Context) {
 func UserSet(c *gin.Context) {
 	NewUsername := c.PostForm("username")
 	NewPassword := c.PostForm("password")
+	OldPassword := c.PostForm("oldPassword")
 	if NewUsername == "" || NewPassword == "" {
 		c.JSON(400, gin.H{
 			"code": "00001",
@@ -238,7 +262,24 @@ func UserSet(c *gin.Context) {
 		})
 		return
 	}
+	// 后端密码强度校验
+	if !validatePassword(NewPassword) {
+		c.JSON(400, gin.H{
+			"code": "00001",
+			"msg":  "密码长度不能少于6位",
+		})
+		return
+	}
 	username, _ := c.Get("username")
+	// 必须先验证旧密码，防止被盗token直接改密接管账户
+	check := &models.User{Username: username.(string), Password: OldPassword}
+	if err := check.Verify(); err != nil {
+		c.JSON(400, gin.H{
+			"code": "00001",
+			"msg":  "旧密码错误",
+		})
+		return
+	}
 	user := &models.User{Username: username.(string)}
 	err := user.Set(&models.User{
 		Username: NewUsername,
@@ -251,6 +292,10 @@ func UserSet(c *gin.Context) {
 			"msg":  err,
 		})
 		return
+	}
+	// 改密后自增token版本号，使已签发的旧token立即失效
+	if verr := models.IncrementTokenVersion(NewUsername); verr != nil {
+		log.Println("吊销旧token失败:", verr)
 	}
 	c.JSON(200, gin.H{
 		"code": "00000",

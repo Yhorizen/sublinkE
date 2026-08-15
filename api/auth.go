@@ -12,12 +12,19 @@ import (
 )
 
 // 获取token
-func GetToken(username string) (string, error) {
+func GetToken(username string, tokenVersion int) (string, error) {
+	// 过期天数取配置(默认14天)
+	config := models.ReadConfig()
+	expireDays := config.ExpireDays
+	if expireDays <= 0 {
+		expireDays = 14
+	}
 	c := &middlewares.JwtClaims{
-		Username: username,
+		Username:     username,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour * 14)), // 14天后过期
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                          // 签发时间
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour * time.Duration(expireDays))),
+			IssuedAt:  jwt.NewNumericDate(time.Now()), // 签发时间
 			Subject:   username,
 		},
 	}
@@ -25,9 +32,9 @@ func GetToken(username string) (string, error) {
 	return token.SignedString(middlewares.Secret)
 }
 
-// 获取captcha图形验证码
+// 获取滑块验证码
 func GetCaptcha(c *gin.Context) {
-	id, bs4, _, err := utils.GetCaptcha()
+	id, bs4, err := utils.GetCaptcha()
 	if err != nil {
 		log.Println("获取验证码失败")
 		c.JSON(400, gin.H{
@@ -40,6 +47,10 @@ func GetCaptcha(c *gin.Context) {
 		"data": gin.H{
 			"captchaKey":    id,
 			"captchaBase64": bs4,
+			"captchaType":   "slider",
+			"bgWidth":       utils.SliderBgWidth,
+			"bgHeight":      utils.SliderBgHeight,
+			"pieceSize":     utils.SliderPieceSize,
 		},
 		"msg": "获取验证码成功",
 	})
@@ -52,8 +63,8 @@ func UserLogin(c *gin.Context) {
 	password := c.PostForm("password")
 	captchaCode := c.PostForm("captchaCode")
 	captchaKey := c.PostForm("captchaKey")
-	// 验证验证码
-	if !utils.VerifyCaptcha(captchaKey, captchaCode) {
+	// 验证验证码(位置 + 拖动轨迹)
+	if !utils.VerifyCaptcha(captchaKey, captchaCode) || !utils.VerifyTrajectory(c.PostForm("trajectory")) {
 		log.Println("验证码错误")
 		c.JSON(400, gin.H{
 			"msg": "验证码错误",
@@ -70,7 +81,7 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 	// 生成token
-	token, err := GetToken(username)
+	token, err := GetToken(username, user.TokenVersion)
 	if err != nil {
 		log.Println("获取token失败")
 		c.JSON(400, gin.H{
@@ -92,10 +103,18 @@ func UserLogin(c *gin.Context) {
 }
 func UserOut(c *gin.Context) {
 	// 拿到jwt中的username
-	if _, Is := c.Get("username"); Is {
-		c.JSON(200, gin.H{
-			"code": "00000",
-			"msg":  "退出成功",
-		})
+	username, _ := c.Get("username")
+	u, _ := username.(string)
+	if u == "" {
+		c.JSON(400, gin.H{"msg": "未登录"})
+		return
 	}
+	// 自增token版本号，使已签发的JWT立即失效(服务端登出吊销)
+	if err := models.IncrementTokenVersion(u); err != nil {
+		log.Println("登出吊销token失败:", err)
+	}
+	c.JSON(200, gin.H{
+		"code": "00000",
+		"msg":  "退出成功",
+	})
 }

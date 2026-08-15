@@ -12,6 +12,7 @@ type SubLogs struct {
 	SubcriptionID int
 	UserID        int
 	Username      string
+	UA            string // 拉取时使用的User-Agent
 }
 
 // Add 添加IP

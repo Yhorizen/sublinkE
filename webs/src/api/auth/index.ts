@@ -14,6 +14,7 @@ export function loginApi(data: LoginData): AxiosPromise<LoginResult> {
   formData.append("password", data.password);
   formData.append("captchaKey", data.captchaKey || "");
   formData.append("captchaCode", data.captchaCode || "");
+  formData.append("trajectory", data.trajectory || "");
   return request({
     url: "/api/v1/auth/login",
     method: "post",
@@ -35,6 +36,7 @@ export function registerApi(data: LoginData): AxiosPromise<RegisterResult> {
   formData.append("inviteCode", data.inviteCode || "");
   formData.append("captchaKey", data.captchaKey || "");
   formData.append("captchaCode", data.captchaCode || "");
+  formData.append("trajectory", data.trajectory || "");
   return request({
     url: "/api/v1/auth/register",
     method: "post",
