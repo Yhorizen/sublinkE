@@ -62,7 +62,7 @@
 ## 一键安装
 
 ```bash
-wget https://raw.githubusercontent.com/<你的GitHub用户名>/sublinkE/main/install.sh && sh install.sh
+wget https://raw.githubusercontent.com/Yhorizen/sublinkE/main/install.sh && sh install.sh
 ```
 
 > ⚠ **注意**
