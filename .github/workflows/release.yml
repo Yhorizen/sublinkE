@@ -42,7 +42,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # 本地为 pnpm 11; webs/pnpm-workspace.yaml 的 allowBuilds 配置需 pnpm 10+ 才能识别
+          # (pnpm 9 会因 workspace 文件缺少 packages 字段而报错)
+          version: 11
           run_install: false
 
       - name: Setup Go
